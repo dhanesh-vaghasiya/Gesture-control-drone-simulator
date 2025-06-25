@@ -67,8 +67,8 @@ public class DroneController : MonoBehaviour
     {
         ProcessStartInfo startInfo = new ProcessStartInfo
         {
-            FileName = "Assets\\External\\Python\\main.exe",
-            // Arguments = "D:\\Dhanesh\\Python\\hand_game\\main.py",
+            FileName = "Python",
+            Arguments = Application.dataPath+"Assets\\External\\Python\\main.py",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

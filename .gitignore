@@ -10,7 +10,7 @@ MemoryCaptures/
 
 # Python build artifacts inside Assets/External
 Assets/External/Python/__pycache__/
-Assets/External/Python/build/
+Assets/External/Python/build/h
 Assets/External/Python/dist/
 Assets/External/Python/*.spec
 
