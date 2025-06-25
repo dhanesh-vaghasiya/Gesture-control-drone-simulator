@@ -1,0 +1,19 @@
+# Unity generated folders
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+UserSettings/
+MemoryCaptures/
+
+# Python build artifacts inside Assets/External
+Assets/External/Python/__pycache__/
+Assets/External/Python/build/
+Assets/External/Python/dist/
+Assets/External/Python/*.spec
+
+# OS files
+.DS_Store
+Thumbs.db
