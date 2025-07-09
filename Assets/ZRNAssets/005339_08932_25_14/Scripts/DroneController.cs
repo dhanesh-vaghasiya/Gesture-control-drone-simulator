@@ -7,15 +7,12 @@ using System.Diagnostics;
 
 public class DroneController : MonoBehaviour
 {
-    [Header("Controller Settings")]
+    public enum ControllerType { KEYBOARD, HAND }
     public ControllerType controllerType;
 
-    [Header("Movement Settings")]
     public float moveSpeed = 20f;
     public float acceleration = 5f;
     public float ascendSpeed = 8f;
-
-    [Header("Rotation Settings")]
     public float deadzonex = 5f;
     public float deadzoney = 2f;
     public float mouseSensitivity = 2f;
@@ -24,7 +21,6 @@ public class DroneController : MonoBehaviour
     public float rotationSmoothness = 5f;
     public float returnSpeed = 2f;
 
-    [Header("Camera Follow")]
     public Transform droneCamera;
     public float cameraDistance = 6f;
     public float cameraHeight = 2f;
@@ -32,7 +28,6 @@ public class DroneController : MonoBehaviour
 
     private Rigidbody rb;
     private Vector3 currentVelocity;
-
     private float pitch, yaw, roll;
     private bool isRolling = false;
     private int rollDirection = 0;
@@ -47,8 +42,6 @@ public class DroneController : MonoBehaviour
     private float right_thumb_y, right_thumb_start_y;
     private bool right_index_extended, left_index_extended;
 
-    public enum ControllerType { KEYBOARD, HAND }
-
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -58,30 +51,32 @@ public class DroneController : MonoBehaviour
     {
         if (controllerType == ControllerType.HAND)
         {
-            StartPythonProcess();
+            StartPythonScript();
             ConnectToPython();
         }
     }
 
-    void StartPythonProcess()
+    void StartPythonScript()
     {
+        string pythonPath = "python"; // Assumes python is added to PATH
+        string scriptPath = "Assets/External/Python/main.py"; // Adjust as needed
+
         ProcessStartInfo startInfo = new ProcessStartInfo
         {
-            FileName = "Python",
-            Arguments = Application.dataPath+"Assets\\External\\Python\\main.py",
+            FileName = pythonPath,
+            Arguments = $"\"{scriptPath}\"",
             UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
             CreateNoWindow = true
         };
 
         try
         {
             Process.Start(startInfo);
+            UnityEngine.Debug.Log("[Unity] Python script launched.");
         }
         catch (Exception e)
         {
-            UnityEngine.Debug.LogError("Failed to start Python process: " + e.Message);
+            UnityEngine.Debug.LogError("[Unity] Failed to start Python script: " + e.Message);
         }
     }
 
@@ -95,11 +90,11 @@ public class DroneController : MonoBehaviour
                 client = new TcpClient("127.0.0.1", 5000);
                 stream = client.GetStream();
                 isRunning = true;
-                receiveThread = new Thread(new ThreadStart(ReceiveData));
+                receiveThread = new Thread(ReceiveData);
                 receiveThread.Start();
-                UnityEngine.Debug.Log("Connected to Python server.");
+                UnityEngine.Debug.Log("[Unity] Connected to Python.");
             }
-            catch (SocketException)
+            catch
             {
                 Thread.Sleep(500);
                 attempts++;
@@ -108,7 +103,7 @@ public class DroneController : MonoBehaviour
 
         if (client == null)
         {
-            UnityEngine.Debug.LogError("Failed to connect to Python after multiple attempts.");
+            UnityEngine.Debug.LogError("[Unity] Could not connect to Python after retries.");
         }
     }
 
@@ -123,7 +118,6 @@ public class DroneController : MonoBehaviour
                 {
                     int bytesRead = stream.Read(buffer, 0, buffer.Length);
                     string json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
                     GestureData data = JsonUtility.FromJson<GestureData>(json);
 
                     left_thumb_x = data.left_thumb_x;
@@ -136,7 +130,7 @@ public class DroneController : MonoBehaviour
             }
             catch (Exception e)
             {
-                UnityEngine.Debug.LogWarning("Socket receive failed: " + e.Message);
+                UnityEngine.Debug.LogWarning("[Unity] Socket error: " + e.Message);
                 isRunning = false;
             }
         }
@@ -144,19 +138,17 @@ public class DroneController : MonoBehaviour
 
     void Update()
     {
+        float delx = left_thumb_x - left_thumb_start_x;
+        float dely = right_thumb_y - right_thumb_start_y;
+
         if (controllerType == ControllerType.HAND)
         {
             mouseSensitivity = 0.3f;
-            float delx = left_thumb_x - left_thumb_start_x;
-            float dely = right_thumb_y - right_thumb_start_y;
-
-            delx /= 5f;
-            dely /= 5f;
 
             if (Mathf.Abs(delx) > deadzonex)
-                yaw += delx * mouseSensitivity;
+                yaw += delx / 5f * mouseSensitivity;
             if (Mathf.Abs(dely) > deadzoney)
-                pitch += dely * mouseSensitivity;
+                pitch += dely / 5f * mouseSensitivity;
         }
         else
         {
@@ -187,11 +179,9 @@ public class DroneController : MonoBehaviour
         Quaternion targetRotation = Quaternion.Euler(pitch, yaw, roll);
         rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, Time.fixedDeltaTime * rotationSmoothness));
 
-        float forwardInput = 0f;
-        if (controllerType == ControllerType.HAND)
-            forwardInput = right_index_extended ? 1f : left_index_extended ? -1f : 0f;
-        else
-            forwardInput = Input.GetKey(KeyCode.W) ? 1f : Input.GetKey(KeyCode.S) ? -1f : 0f;
+        float forwardInput = controllerType == ControllerType.HAND
+            ? (right_index_extended ? 1f : left_index_extended ? -1f : 0f)
+            : Input.GetKey(KeyCode.W) ? 1f : Input.GetKey(KeyCode.S) ? -1f : 0f;
 
         float verticalInput = Input.GetKey(KeyCode.Space) ? 1f : Input.GetKey(KeyCode.LeftControl) ? -1f : 0f;
 
@@ -202,7 +192,7 @@ public class DroneController : MonoBehaviour
 
     void LateUpdate()
     {
-        if (droneCamera == null) return;
+        if (!droneCamera) return;
 
         Vector3 desiredPos = transform.position - transform.forward * cameraDistance + transform.up * cameraHeight;
         droneCamera.position = Vector3.Lerp(droneCamera.position, desiredPos, Time.deltaTime * cameraSmoothness);

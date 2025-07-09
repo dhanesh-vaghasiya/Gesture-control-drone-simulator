@@ -97,6 +97,7 @@ def hand_tracking():
                 elif not both_hands:
                     left_thumb_x = None
                     left_thumb_start_x = None
+                    left_index_finger_extended = False
 
                 if hand_label == 'Right':
                     right_index_finger_extended = is_index_finger_extended(hand_landmarks)
@@ -105,6 +106,7 @@ def hand_tracking():
                         right_thumb_start_y = cy
                 elif not both_hands:
                     right_thumb_y = None
+                    right_index_finger_extended = False
                     right_thumb_start_y = None
         else:
             left_thumb_x = None
